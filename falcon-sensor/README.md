@@ -1,73 +1,101 @@
 # Falcon Sensor CloudFormation Template
-Add Falcon Sensor to your ECS workloads using CloudFormation templates.
+Add Falcon Sensor to your ECS EC2 cluster using a CloudFormation template.
 
-## EC2 Cluster
-The Falcon Sensor needs to be installed on each EC2 host.
-We can do that by adding an [ECS Daemon Service](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html#service_scheduler_daemon) to your ECS EC2 cluster.
+## Overview
 
-### Prerequisites:
-- Copy your CID from the Falcon platform
-  - _Host setup and management_ > _Deploy_ > _Sensor downloads page_
-- Copy the falcon-sensor image for linux to your ECR registry
+This guide walks you through deploying the CrowdStrike Falcon sensor on Amazon Elastic Container Service (ECS) EC2
+instances using an ECS Daemon Service via CloudFormation. This deployment method ensures comprehensive security coverage
+for your containerized workloads by automatically installing and running the Falcon sensor on every EC2 instance in
+your ECS cluster.
 
-You can run the following commands in:
-- AWS GUI 
-- AWS Cloudshell
-- Your own environment
+[ECS Daemon Service](https://docs.aws.amazon.com/AmazonECS/latest/developerguide/ecs_services.html#service_scheduler_daemon),
+implemented through CloudFormation, is a deployment strategy that runs a specified task on every EC2 instance in
+your ECS cluster. By leveraging this feature to deploy the Falcon sensor, you gain several benefits:
 
-**Note:** If using AWS CLI, ensure the region is set correctly so the CloudFormation stacks are
-run in the correct region.
+- Automatic protection for all existing EC2 instances in your ECS cluster
+- Immediate sensor deployment on any new EC2 instances added to the cluster
+- Persistent sensor operation, even after EC2 instance restarts
+- Consistent and repeatable deployments using infrastructure as code
 
+This approach is particularly valuable for organizations running containerized applications on ECS that need to maintain
+consistent security across all instances without manual intervention. You'll enhance your cloud security posture, gain
+visibility into potential threats across your entire ECS environment, and ensure a standardized deployment process that
+can be version-controlled and easily replicated across multiple environments.
 
-### Installation:
-- Configure the following environment variables
+### Prerequisites
+Before you start, ensure you meet these prerequisites:
+
+- You have AWS CLI configured with the appropriate permissions
+- You can access to CrowdStrike Falcon container registry
+- You have access to an existing ECS EC2 cluster, or you can create one
+- Git installed (for template access)
+
+## Retrieve the sensor image
+
+You need access to the sensor image to deploy to your EC2 instances. We recommend that you copy the image from the
+CrowdStrike registry and move it to your private registry (Option 1). This removes any dependency on the CrowdStrike
+registry. Alternatively, you can pull the image and deploy it directly from the CrowdStrike registry, but note that
+this creates a dependency with a registry that you don't control.
+
+Important: Falcon sensor images are assessed for vulnerabilities and malware before they are released, and they are
+continuously monitored afterward.
+
+https://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment
+
+## Deploy the sensor
+### Step 1: Define your deployment parameters
+| Parameter                | Required | Description                                    | Example                                                                 |
+|:-------------------------|----------|:-----------------------------------------------|:------------------------------------------------------------------------|
+| ECSClusterName           | Yes      | Your ECS cluster name                          | your-ecs-cluster-name                                                   | 
+| ECSExecutionRoleArn      | Yes      | Your ECS execution role already defined in IAM | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole                     |
+| ECSTaskRoleArn           | Yes      | Your ECS task role already defined in IAM      | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole                          |
+| FalconCID                | Yes      | Your CrowdStrike Customer ID                   | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                     |
+| FalconImagePath          | Yes      | Full path to Falcon sensor image               | 1234567890.dkr.ecr.region.<br/>amazonaws.com/falcon-sensor:6.46.0-14306 |
+| SensorMemoryReservation  | No       | Memory Reservation for Falcon Sensor task      | 512 (default)                                                           |
+  
+
+### Step 2: Get the template
 ```bash
-    ECS_EC2_CLUSTER_NAME=<INSERT your-ecs-cluster-name>
-    FALCON_CID=<INSERT cid>
-    FALCON_FULL_IMAGE_PATH=<INSERT falcon image>
-    ECS_EXECUTION_ROLE_ARN=<INSERT ecsTaskExecutionRole for the aws account>
-    ECS_TASK_ROLE_ARN=<INSERT ecsTaskRole for the aws account>
+  git clone https://github.com/CrowdStrike/falcon-cloudformation.git
 ```
 
-- Deploy sensor by configuring options inline
+### Step 3: Deploy with CloudFormation
+Choose one of these deployment methods:
+
+#### Option A: Deploy using parameter file
 ```bash
-    aws cloudformation deploy \
-      --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
-      --template-file falcon-ecs-ec2-daemon-template.yaml \
-      --parameter-overrides \
-        "ECSClusterName=$ECS_EC2_CLUSTER_NAME" \
-        "ECSExecutionRoleArn=$ECS_EXECUTION_ROLE_ARN" \
-        "ECSTaskRoleArn=$ECS_TASK_ROLE_ARN" \
-        "CID=$FALCON_CID" \
-        "FalconImagePath=$FALCON_FULL_IMAGE_PATH" \
-        "TAGS=" \
-        "Trace=none"
+  aws cloudformation deploy \
+  --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
+  --template-file falcon-ecs-ec2-daemon-template.yaml \
+  --parameter-overrides file://falcon-ecs-ec2-daemon-parameters.json
 ```
 
-- Deploy sensor with options in falcon-ecs-ec2-daemon-parameters.json file
+#### Option B: Deploy using command line parameters
 ```bash
-    aws cloudformation deploy \
+  aws cloudformation deploy \
     --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
     --template-file falcon-ecs-ec2-daemon-template.yaml \
-    --parameter-overrides file://falcon-ecs-ec2-daemon-parameters.json
+    --parameter-overrides \
+      "ECSClusterName=$ECS_EC2_CLUSTER_NAME" \
+      "ECSExecutionRoleArn=$ECS_EXECUTION_ROLE_ARN" \
+      "ECSTaskRoleArn=$ECS_TASK_ROLE_ARN" \
+      "CID=$FALCON_CID" \
+      "FalconImagePath=$FALCON_FULL_IMAGE_PATH" \
+      "TAGS=<INSERT tags>" \
+      "Trace=none"
 ```
 
-**Notes:**
-- Logging is disabled by default
-  - To enable the logging, uncomment LogConfiguration and LogGroup sections in
-  falcon-ecs-ec2-daemon-template.yaml
-  - Configure "Trace=debug"
+## Uninstall the sensor
+To remove the Falcon sensor daemon from your ECS cluster:
 
-
-### Uninstall and Cleanup:
-- Remove falcon sensor Daemon
+### Step 1: Delete the Falcon sensor daemon stack 
 ```bash
     aws cloudformation delete-stack \
     --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME
 ```
 
-- Cleanup /opt/CrowdStrike directory on host by deploying another short-lived daemonset
-- Deploy cleanup daemonset by configuring options inline
+### Step 2: Cleanup Falcon sensor artifacts 
+#### Option 1: Deploy cleanup daemonset using command line parameters
 ```bash
     aws cloudformation deploy \
       --stack-name falcon-ecs-ec2-daemon-cleanup-$ECS_EC2_CLUSTER_NAME \
@@ -79,7 +107,7 @@ run in the correct region.
         "FalconImagePath=$FALCON_FULL_IMAGE_PATH"
 ```
 
-- Deploy cleanup daemonset with options in falcon-ecs-ec2-daemon-parameters.json file
+#### Option 2: Deploy cleanup daemonset using parameter file
 ```bash
     aws cloudformation deploy \
       --stack-name falcon-ecs-ec2-daemon-cleanup-$ECS_EC2_CLUSTER_NAME \
@@ -87,15 +115,12 @@ run in the correct region.
       --parameter-overrides file://falcon-ecs-ec2-daemon-cleanup-parameters.json
 ```
 
-- Remove cleanup daemonset
+### Step 3: Delete cleanup daemonset stack
 ```bash
     aws cloudformation delete-stack \
       --stack-name falcon-ecs-ec2-daemon-cleanup-$ECS_EC2_CLUSTER_NAME
 ```
 
-Notes:
+## Notes
 - Logging is disabled by default
-  - To enable the logging, uncomment LogConfiguration and LogGroup sections in
-  falcon-ecs-ec2-daemon-cleanup.yaml
-
-
+  - To enable the logging, uncomment LogConfiguration and LogGroup sections in the respective template yaml file.

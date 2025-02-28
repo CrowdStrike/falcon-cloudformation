@@ -20,19 +20,6 @@ Parameters:
     Type: String
     Description: Task role name to exec in to the falcon container
 
-  APD:
-    Type: String
-    Default: ""
-    Description: App Proxy Disable (APD)
-  APH:
-    Type: String
-    Default: ""
-    Description: App Proxy Host (APH)
-  APP:
-    Type: String
-    Default: ""
-    Description: App Proxy Port (APP)
-
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:

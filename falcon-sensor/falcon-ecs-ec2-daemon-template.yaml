@@ -1,9 +1,9 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Sample template for launching Falcon Sensor for Linux container image as an ECS Daemon Service to a cluster
+Description: Sample template for launching Linux Falcon Sensor as an ECS Daemon Service to a cluster
 Parameters:
   ECSClusterName:
     Type: String
-    Description: Cluster name to deploy Falcon Sensor for Linux as a Daemon Service
+    Description: Cluster name to deploy Linux Falcon Sensor as a Daemon Service
   ECSExecutionRoleArn:
     Type: String
     Description: Execution role name to exec in to the falcon container
@@ -15,7 +15,7 @@ Parameters:
     Description: CrowdStrike Customer ID (CID) value
   FalconImagePath:
     Type: String
-    Description: The ECR image path including tag value for the Falcon Sensor for Linux container image
+    Description: The ECR image path including tag value for the Linux Falcon Sensor container image
   SensorMemoryReservation:
     Type: String
     Description: Memory Reservation for the Falcon Sensor

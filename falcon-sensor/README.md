@@ -30,6 +30,11 @@ Before you start, ensure you meet these prerequisites:
 - You have access to an existing ECS EC2 cluster, or you can create one
 - Git installed (for template access)
 
+## CloudFormation template support for Falcon Sensor versions
+| CloudFormation Template Version | Falcon Sensor Version |
+|:--------------------------------|:----------------------|
+| `>= 0.1.x`                      | `>= 7.19.x`           |
+
 ## Retrieve the sensor image
 
 You need access to the sensor image to deploy to your EC2 instances. We recommend that you copy the image from the
@@ -50,7 +55,7 @@ https://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-s
 | $ECS_EXECUTION_ROLE_ARN | Your ECS execution role already defined in IAM | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole                |
 | $ECS_TASK_ROLE_ARN      | Your ECS task role already defined in IAM      | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole                     |
 | $FALCON_CID             | Your CrowdStrike Customer ID                   | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                |
-| $FALCON_FULL_IMAGE_PATH | Full path to Falcon sensor image in ECR        | 1234567890.dkr.ecr.region.amazonaws.com/falcon-sensor:6.46.0-14306 |
+| $FALCON_FULL_IMAGE_PATH | Full path to Falcon sensor image in ECR        | XXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:6.46.0-14306 |
 
 ### Step 2: Get the template
 ```bash

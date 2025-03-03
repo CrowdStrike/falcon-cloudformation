@@ -5,7 +5,7 @@ platform purpose-built to stop breaches via a unified set of cloud-delivered tec
 attacks — including malware and much more.
 
 This repository contains sample CrowdStrike CloudFormation templates. The CloudFormation templates developed here
-are examples for others to use, not an official CrowdStrike product.
+are an open source project, not a CrowdStrike product.
 
 ## CloudFormation Templates
 | Helm Chart                       | Description                                                                                                              |
@@ -13,6 +13,7 @@ are examples for others to use, not an official CrowdStrike product.
 | [Falcon Sensor](falcon-sensor)   | Deploys the Falcon Sensor to an ECS cluster with EC2 instances. See [the README](falcon-sensor/README.md) for more info. |
 
 ## Support
-CrowdStrike Falcon CloudFormation templates are example templates designed to streamline the deployment and use of
-CrowdStrike products via AWS CloudFormation. While not a formal CrowdStrike product, CrowdStrike Falcon CloudFormation
-templates are maintained by CrowdStrike.
+CrowdStrike Falcon CloudFormation templates is a community-driven, open source project designed to streamline the
+deployment and use of CrowdStrike products using AWS CloudFormation. While not a formal CrowdStrike product, CrowdStrike
+Falcon CloudFormation templates are maintained by CrowdStrike and supported in partnership with the open source
+developer community.

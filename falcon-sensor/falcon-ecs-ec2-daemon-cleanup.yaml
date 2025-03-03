@@ -29,6 +29,8 @@ Metadata:
           - ECSClusterName
           - FalconImagePath
           - SensorMemoryReservation
+          - ECSExecutionRoleArn
+          - ECSTaskRoleArn
 
 Resources:
   FalconECSTaskDefinition:

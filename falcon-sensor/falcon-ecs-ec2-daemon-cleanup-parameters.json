@@ -1,6 +1,6 @@
 [
   "ECSClusterName=<INSERT ECS Cluster name>",
-  "ECSExecutionRoleArn=<INSERT ecsTaskExecutionRole for the aws account>",
-  "ECSTaskRoleArn=<INSERT ecsTaskRole for the aws account>",
-  "FalconImagePath=<INSERT falcon image>"
+  "ECSExecutionRoleArn=<INSERT ECS ExecutionRole for the AWS account>",
+  "ECSTaskRoleArn=<INSERT ECS TaskRole for the AWS account>",
+  "FalconImagePath=<INSERT ECR Falcon sensor image path>"
 ]

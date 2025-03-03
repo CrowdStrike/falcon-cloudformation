@@ -10,7 +10,7 @@ Parameters:
   ECSTaskRoleArn:
     Type: String
     Description: Task role name to exec in to the falcon container
-  CID:
+  FalconCID:
     Type: String
     Description: CrowdStrike Customer ID (CID) value
   FalconImagePath:
@@ -65,7 +65,7 @@ Parameters:
     Type: String
     Default: ""
     Description: App Proxy Port (APP)
-  TRACE:
+  Trace:
     Type: String
     Description: Set Trace Level
     Default: none
@@ -75,19 +75,19 @@ Parameters:
       - warn
       - info
       - debug
-  FEATURE:
+  Feature:
     Type: String
     Default: ""
     Description: Sensor Feature Options
-  TAGS:
+  Tags:
     Type: String
     Default: ""
     Description: Comma separated list of tags for sensor grouping
-  PROVISIONINGTOKEN:
+  ProvisioningToken:
     Type: String
     Default: ""
     Description: Provisioning token value
-  BILLING:
+  Billing:
     Type: String
     Default: ""
     Description: Billing value
@@ -95,7 +95,7 @@ Parameters:
       - ""
       - default
       - metered
-  BACKEND:
+  Backend:
     Type: String
     Default: bpf
     Description: Backend option, allowed values "kernel" and "bpf"
@@ -110,21 +110,23 @@ Metadata:
           default: Mandatory Fields
         Parameters:
           - ECSClusterName
-          - CID
+          - ECSExecutionRoleArn
+          - ECSTaskRoleArn
+          - FalconCID
           - FalconImagePath
           - SensorMemoryReservation
       - Label:
           default: Optional falconctl install options
         Parameters:
-          - TAGS
-          - PROVISIONINGTOKEN
-          - TRACE
           - APD
           - APH
           - APP
-          - FEATURE
-          - BACKEND
-          - BILLING
+          - Trace
+          - Feature
+          - Tags
+          - ProvisioningToken
+          - Billing
+          - Backend
 
 Resources:
   FalconECSTaskDefinition:
@@ -157,7 +159,7 @@ Resources:
               Condition: COMPLETE
           Environment:
             - Name: FALCONCTL_OPT_CID
-              Value: !Ref CID
+              Value: !Ref FalconCID
             - Name: FALCONCTL_OPT_APD
               Value: !Ref APD
             - Name: FALCONCTL_OPT_APH
@@ -165,17 +167,17 @@ Resources:
             - Name: FALCONCTL_OPT_APP
               Value: !Ref APP
             - Name: FALCONCTL_OPT_TRACE
-              Value: !Ref TRACE
+              Value: !Ref Trace
             - Name: FALCONCTL_OPT_TAGS
-              Value: !Ref TAGS
+              Value: !Ref Tags
             - Name: FALCONCTL_OPT_FEATURE
-              Value: !Ref FEATURE
+              Value: !Ref Feature
             - Name: FALCONCTL_OPT_PROVISIONING_TOKEN
-              Value: !Ref PROVISIONINGTOKEN
+              Value: !Ref ProvisioningToken
             - Name: FALCONCTL_OPT_BILLING
-              Value: !Ref BILLING
+              Value: !Ref Billing
             - Name: FALCONCTL_OPT_BACKEND
-              Value: !Ref BACKEND
+              Value: !Ref Backend
           MemoryReservation: !Ref SensorMemoryReservation
           MountPoints:
             - ContainerPath: /opt/CrowdStrike/falconstore

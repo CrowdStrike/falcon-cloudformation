@@ -43,16 +43,14 @@ continuously monitored afterward.
 https://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment
 
 ## Deploy the sensor
-### Step 1: Define your deployment parameters
-| Parameter                | Required | Description                                    | Example                                                                 |
-|:-------------------------|----------|:-----------------------------------------------|:------------------------------------------------------------------------|
-| ECSClusterName           | Yes      | Your ECS cluster name                          | your-ecs-cluster-name                                                   | 
-| ECSExecutionRoleArn      | Yes      | Your ECS execution role already defined in IAM | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole                     |
-| ECSTaskRoleArn           | Yes      | Your ECS task role already defined in IAM      | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole                          |
-| FalconCID                | Yes      | Your CrowdStrike Customer ID                   | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                     |
-| FalconImagePath          | Yes      | Full path to Falcon sensor image               | 1234567890.dkr.ecr.region.<br/>amazonaws.com/falcon-sensor:6.46.0-14306 |
-| SensorMemoryReservation  | No       | Memory Reservation for Falcon Sensor task      | 512 (default)                                                           |
-  
+### Step 1: Define your required deployment parameters
+| Parameter               | Description                                    | Example                                                            |
+|:------------------------|:-----------------------------------------------|:-------------------------------------------------------------------|
+| $ECS_EC2_CLUSTER_NAME   | Your ECS cluster name                          | your-ecs-cluster-name                                              | 
+| $ECS_EXECUTION_ROLE_ARN | Your ECS execution role already defined in IAM | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole                |
+| $ECS_TASK_ROLE_ARN      | Your ECS task role already defined in IAM      | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole                     |
+| $FALCON_CID             | Your CrowdStrike Customer ID                   | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                |
+| $FALCON_FULL_IMAGE_PATH | Full path to Falcon sensor image in ECR        | 1234567890.dkr.ecr.region.amazonaws.com/falcon-sensor:6.46.0-14306 |
 
 ### Step 2: Get the template
 ```bash
@@ -79,11 +77,30 @@ Choose one of these deployment methods:
       "ECSClusterName=$ECS_EC2_CLUSTER_NAME" \
       "ECSExecutionRoleArn=$ECS_EXECUTION_ROLE_ARN" \
       "ECSTaskRoleArn=$ECS_TASK_ROLE_ARN" \
-      "CID=$FALCON_CID" \
+      "FalconCID=$FALCON_CID" \
       "FalconImagePath=$FALCON_FULL_IMAGE_PATH" \
       "TAGS=<INSERT tags>" \
       "Trace=none"
 ```
+
+#### Template Configuration Parameters
+| Parameter               | Required | Description                                      | Default | Example                                                            |
+|:------------------------|----------|:-------------------------------------------------|:--------|:-------------------------------------------------------------------|
+| ECSClusterName          | Yes      | Your ECS cluster name                            |         | your-ecs-cluster-name                                              | 
+| ECSExecutionRoleArn     | Yes      | Your ECS execution role already defined in IAM   |         | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole                |
+| ECSTaskRoleArn          | Yes      | Your ECS task role already defined in IAM        |         | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole                     |
+| FalconCID               | Yes      | Your CrowdStrike Customer ID                     |         | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                |
+| FalconImagePath         | Yes      | Full path to Falcon sensor image in ECR          |         | 1234567890.dkr.ecr.region.amazonaws.com/falcon-sensor:6.46.0-14306 |
+| SensorMemoryReservation | No       | Memory Reservation for Falcon Sensor task        | 512     | Allowed values: 512, 1024 - 30720 in increments of 1024            |
+| APD                     | No       | App Proxy Disable (APD)                          | ""      |                                                                    |
+| APH                     | No       | App Proxy Host (APH)                             | ""      |                                                                    |
+| APP                     | No       | App Proxy Port (APP)                             | ""      |                                                                    |
+| Trace                   | No       | Set Trace Level                                  | ""      | Allowed values: none, err, warn, info, debug                       |
+| Feature                 | No       | Falcon Sensor feature Options                    | ""      |                                                                    |
+| Tags                    | No       | Comma separated list of tags for sensor grouping | ""      |                                                                    |
+| ProvisioningToken       | No       | Falcon provisioning token value                  | ""      |                                                                    |
+| Billing                 | No       | Falcon billing value                             | ""      | Allowed values: default, metered                                   |
+| Backend                 | No       | Falcon backend option                            | bpf     | Allowed values: bpf, kernel                                        |
 
 ## Uninstall the sensor
 To remove the Falcon sensor daemon from your ECS cluster:

@@ -1,8 +1,4 @@
 # Falcon Sensor CloudFormation Template
-Add Falcon Sensor to your ECS EC2 cluster using a CloudFormation template.
-
-## Overview
-
 This guide walks you through deploying the CrowdStrike Falcon sensor on Amazon Elastic Container Service (ECS) EC2
 instances using an ECS Daemon Service via CloudFormation. This deployment method ensures comprehensive security coverage
 for your containerized workloads by automatically installing and running the Falcon sensor on every EC2 instance in
@@ -22,7 +18,7 @@ consistent security across all instances without manual intervention. You'll enh
 visibility into potential threats across your entire ECS environment, and ensure a standardized deployment process that
 can be version-controlled and easily replicated across multiple environments.
 
-### Prerequisites
+## Prerequisites
 Before you start, ensure you meet these prerequisites:
 
 - You have AWS CLI configured with the appropriate permissions
@@ -36,26 +32,24 @@ Before you start, ensure you meet these prerequisites:
 | `>= 0.1.x`                      | `>= 7.19.x`           |
 
 ## Retrieve the sensor image
+You need access to the sensor image to deploy to your EC2 instances. This CFT assumes that you have a copy of the Falcon sensor image
+in your own ECR repository. For instructions on how to copy the image from the CrowdStrike registry and move it to your private registry,
+please follow the instructions in the Falcon support docs (Option 1: Pull an image and copy it to your private repo).
 
-You need access to the sensor image to deploy to your EC2 instances. We recommend that you copy the image from the
-CrowdStrike registry and move it to your private registry (Option 1). This removes any dependency on the CrowdStrike
-registry. Alternatively, you can pull the image and deploy it directly from the CrowdStrike registry, but note that
-this creates a dependency with a registry that you don't control.
+https://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment
 
 Important: Falcon sensor images are assessed for vulnerabilities and malware before they are released, and they are
 continuously monitored afterward.
 
-https://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment
-
 ## Deploy the sensor
-### Step 1: Define your required deployment parameters
-| Parameter               | Description                                    | Example                                                            |
-|:------------------------|:-----------------------------------------------|:-------------------------------------------------------------------|
-| $ECS_EC2_CLUSTER_NAME   | Your ECS cluster name                          | your-ecs-cluster-name                                              | 
-| $ECS_EXECUTION_ROLE_ARN | Your ECS execution role already defined in IAM | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole                |
-| $ECS_TASK_ROLE_ARN      | Your ECS task role already defined in IAM      | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole                     |
-| $FALCON_CID             | Your CrowdStrike Customer ID                   | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                |
-| $FALCON_FULL_IMAGE_PATH | Full path to Falcon sensor image in ECR        | XXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:6.46.0-14306 |
+### Step 1: Define your required parameters as shell variables
+| Variable               | Description                                    | Example                                                            |
+|:-----------------------|:-----------------------------------------------|:-------------------------------------------------------------------|
+| ECS_EC2_CLUSTER_NAME   | Your ECS cluster name                          | your-ecs-cluster-name                                              | 
+| ECS_EXECUTION_ROLE_ARN | Your ECS execution role already defined in IAM | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole                |
+| ECS_TASK_ROLE_ARN      | Your ECS task role already defined in IAM      | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole                     |
+| FALCON_CID             | Your CrowdStrike Customer ID                   | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                |
+| FALCON_FULL_IMAGE_PATH | Full path to Falcon sensor image in ECR        | XXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:7.19.0-17219 |
 
 ### Step 2: Get the template
 ```bash

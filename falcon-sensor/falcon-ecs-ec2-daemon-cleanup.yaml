@@ -13,12 +13,29 @@ Parameters:
     Default: 128
     AllowedValues:
       - 128
+
+  EnableLogging:
+    Type: String
+    Description: Boolean string to enable logging for the Falcon ECS service.
+    Default: false
+    AllowedValues:
+      - true
+      - false
+  EnableExecuteCommand:
+    Type: String
+    Description: Boolean string to enable ECS exec on the Falcon sensor container. This should be enabled only when required.
+    Default: false
+    AllowedValues:
+      - true
+      - false
   ECSExecutionRoleArn:
     Type: String
-    Description: Execution role name to exec in to the falcon container
+    Description: Execution role name to exec in to the Falcon container. Only required if ECS exec is enabled.
+    Default: ""
   ECSTaskRoleArn:
     Type: String
-    Description: Task role name to exec in to the falcon container
+    Description: Task role name to exec in to the Falcon container. Only required if logging or ECS exec is enabled.
+    Default: ""
 
 Metadata:
   AWS::CloudFormation::Interface:
@@ -28,9 +45,14 @@ Metadata:
         Parameters:
           - ECSClusterName
           - FalconImagePath
-          - SensorMemoryReservation
-          - ECSExecutionRoleArn
-          - ECSTaskRoleArn
+
+Conditions:
+  IsLoggingEnabled: !Equals [!Ref EnableLogging, "true"]
+  IsExecuteCommandEnabled: !Equals [!Ref EnableExecuteCommand, "true"]
+  IsExecutionRoleRequired: !Condition IsExecuteCommandEnabled
+  IsTaskRoleRequired: !Or
+    - !Condition IsLoggingEnabled
+    - !Condition IsExecuteCommandEnabled
 
 Resources:
   FalconECSTaskDefinition:
@@ -49,12 +71,14 @@ Resources:
           Privileged: true
           ReadonlyRootFilesystem: false
           User: 0
-          # LogConfiguration:
-          #   LogDriver: awslogs
-          #   Options:
-          #     awslogs-group: !Sub "/aws/ecs/${ECSClusterName}/crowdstrike/falcon-daemon-service"
-          #     awslogs-region: !Ref AWS::Region
-          #     awslogs-stream-prefix: "node-init"
+          LogConfiguration: !If
+            - IsLoggingEnabled
+            - LogDriver: awslogs
+              Options:
+                awslogs-group: !Sub "/aws/ecs/${ECSClusterName}/crowdstrike/falcon-daemon-service"
+                awslogs-region: !Ref AWS::Region
+                awslogs-stream-prefix: "node-init"
+            - !Ref AWS::NoValue
         - Name: cleanup-sleep
           Image: !Ref FalconImagePath
           EntryPoint:
@@ -69,19 +93,27 @@ Resources:
           MemoryReservation: !Ref SensorMemoryReservation
           Privileged: false
           ReadonlyRootFilesystem: true
-          # LogConfiguration:
-          #   LogDriver: awslogs
-          #   Options:
-          #     awslogs-group: !Sub "/aws/ecs/${ECSClusterName}/crowdstrike/falcon-daemon-service"
-          #     awslogs-region: !Ref AWS::Region
-          #     awslogs-stream-prefix: "node-sensor"
+          LogConfiguration: !If
+            - IsLoggingEnabled
+            - LogDriver: awslogs
+              Options:
+                awslogs-group: !Sub "/aws/ecs/${ECSClusterName}/crowdstrike/falcon-daemon-service"
+                awslogs-region: !Ref AWS::Region
+                awslogs-stream-prefix: "node-sensor"
+            - !Ref AWS::NoValue
       PidMode: host
       RuntimePlatform:
         OperatingSystemFamily: LINUX
       RequiresCompatibilities:
         - EC2
-      ExecutionRoleArn: !Ref ECSExecutionRoleArn
-      TaskRoleArn: !Ref ECSTaskRoleArn
+      ExecutionRoleArn: !If
+        - IsExecutionRoleRequired
+        - !Ref ECSExecutionRoleArn
+        - !Ref AWS::NoValue
+      TaskRoleArn: !If
+        - IsTaskRoleRequired
+        - !Ref ECSTaskRoleArn
+        - !Ref AWS::NoValue
 
   FalconECSService:
     Type: AWS::ECS::Service
@@ -89,11 +121,12 @@ Resources:
       Cluster: !Ref ECSClusterName
       SchedulingStrategy: DAEMON
       LaunchType: EC2
-      EnableExecuteCommand: true
+      EnableExecuteCommand: !If [IsExecuteCommandEnabled, true, false]
       ServiceName: crowdstrike-falcon-cleanup-daemon
       TaskDefinition: !Ref FalconECSTaskDefinition
 
-  # LogGroup:
-  #   Type: AWS::Logs::LogGroup
-  #   Properties:
-  #     LogGroupName: !Sub "/aws/ecs/${ECSClusterName}/crowdstrike/falcon-daemon-service"
+  FalconServiceLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: IsLoggingEnabled
+    Properties:
+      LogGroupName: !Sub "/aws/ecs/${ECSClusterName}/crowdstrike/falcon-daemon-service"

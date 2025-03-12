@@ -125,7 +125,7 @@ Resources:
       ServiceName: crowdstrike-falcon-cleanup-daemon
       TaskDefinition: !Ref FalconECSTaskDefinition
 
-  FalconServiceLogGroup:
+  FalconECSServiceLogGroup:
     Type: AWS::Logs::LogGroup
     Condition: IsLoggingEnabled
     Properties:

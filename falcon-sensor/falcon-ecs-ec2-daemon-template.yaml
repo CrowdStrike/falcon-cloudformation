@@ -1,51 +1,19 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Sample template for launching Linux Falcon Sensor as an ECS Daemon Service to a cluster
+Description: Sample template for launching Linux Falcon sensor as an ECS Daemon Service to a cluster
 Parameters:
   ECSClusterName:
     Type: String
-    Description: Cluster name to deploy Linux Falcon Sensor as a Daemon Service
+    Description: Cluster name to deploy Linux Falcon sensor as a Daemon Service
   FalconCID:
     Type: String
     Description: CrowdStrike Customer ID (CID) value
   FalconImagePath:
     Type: String
-    Description: The ECR image path including tag value for the Linux Falcon Sensor container image
+    Description: The ECR image path including tag value for the Linux Falcon sensor container image
   SensorMemoryReservation:
-    Type: String
-    Description: Memory Reservation for the Falcon Sensor
+    Type: Number
+    Description: Memory reservation for the Falcon sensor container
     Default: 512
-    AllowedValues:
-      - 512
-      - 1024
-      - 2048
-      - 3072
-      - 4096
-      - 5120
-      - 6144
-      - 7168
-      - 8192
-      - 9216
-      - 10240
-      - 11264
-      - 12288
-      - 13312
-      - 14336
-      - 15360
-      - 16384
-      - 17408
-      - 18432
-      - 19456
-      - 20480
-      - 21504
-      - 22528
-      - 23552
-      - 24576
-      - 25600
-      - 26624
-      - 27648
-      - 28672
-      - 29696
-      - 30720
 
   APD:
     Type: String
@@ -129,7 +97,6 @@ Metadata:
           - ECSClusterName
           - FalconCID
           - FalconImagePath
-          - SensorMemoryReservation
       - Label:
           default: Optional falconctl install options
         Parameters:
@@ -142,6 +109,13 @@ Metadata:
           - ProvisioningToken
           - Billing
           - Backend
+      - Label:
+          default: Advanced options for logging and execute-command
+        Parameters:
+          - EnableLogging
+          - EnableExecuteCommand
+          - ECSExecutionRoleArn
+          - ECSTaskRoleArn
 
 Conditions:
   IsLoggingEnabled: !Equals [!Ref EnableLogging, "true"]
@@ -248,7 +222,7 @@ Resources:
       ServiceName: crowdstrike-falcon-node-daemon
       TaskDefinition: !Ref FalconECSTaskDefinition
 
-  LogGroup:
+  FalconECSServiceLogGroup:
     Type: AWS::Logs::LogGroup
     Condition: IsLoggingEnabled
     Properties:

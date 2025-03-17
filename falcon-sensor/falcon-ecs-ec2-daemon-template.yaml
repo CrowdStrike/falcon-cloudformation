@@ -132,9 +132,13 @@ Metadata:
           - Billing
           - Backend
       - Label:
-          default: Advanced options for logging and execute-command
+          default: Advanced options for logging
         Parameters:
           - EnableLogging
+          - ECSTaskRoleArn
+      - Label:
+          default: Advanced options for execute-command
+        Parameters:
           - EnableExecuteCommand
           - ECSExecutionRoleArn
           - ECSTaskRoleArn

@@ -169,8 +169,8 @@ By default, logging is disabled. To enable logging:
 ### Enable ECS exec
 ECS exec should only be enabled if and when required.
 - Set `EnableExecuteCommand=true`
-- `ECSTaskRoleArn` with `AmazonEC2ContainerServiceforEC2Role` IAM policy attached
-- `ECSExecutionRoleArn` with `AmazonEC2ContainerServiceforEC2Role` IAM policy attached, plus the following SSM permissions:
+- `ECSTaskRoleArn` with `AmazonECSTaskExecutionRolePolicy` IAM policy attached
+- `ECSExecutionRoleArn` with `AmazonECSTaskExecutionRolePolicy` IAM policy attached, plus the following SSM permissions:
 ```json
 {
     "Version": "2012-10-17",

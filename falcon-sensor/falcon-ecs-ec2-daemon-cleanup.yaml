@@ -7,12 +7,6 @@ Parameters:
   FalconImagePath:
     Type: String
     Description: The ECR image path including tag value for the Falcon Sensor for Linux container image
-  SensorMemoryReservation:
-    Type: String
-    Description: Memory Reservation for the Falcon Sensor
-    Default: 128
-    AllowedValues:
-      - 128
 
   EnableLogging:
     Type: String
@@ -21,20 +15,9 @@ Parameters:
     AllowedValues:
       - true
       - false
-  EnableExecuteCommand:
-    Type: String
-    Description: Boolean string to enable ECS exec on the Falcon sensor container. This should be enabled only when required.
-    Default: false
-    AllowedValues:
-      - true
-      - false
-  ECSExecutionRoleArn:
-    Type: String
-    Description: Execution role name to exec in to the Falcon container. Only required if ECS exec is enabled.
-    Default: ""
   ECSTaskRoleArn:
     Type: String
-    Description: Task role name to exec in to the Falcon container. Only required if logging or ECS exec is enabled.
+    Description: Task role name to exec in to the Falcon container. Only required if logging is enabled.
     Default: ""
 
 Metadata:
@@ -48,16 +31,21 @@ Metadata:
 
 Conditions:
   IsLoggingEnabled: !Equals [!Ref EnableLogging, "true"]
-  IsExecuteCommandEnabled: !Equals [!Ref EnableExecuteCommand, "true"]
-  IsExecutionRoleRequired: !Condition IsExecuteCommandEnabled
-  IsTaskRoleRequired: !Or
-    - !Condition IsLoggingEnabled
-    - !Condition IsExecuteCommandEnabled
+  IsTaskRoleRequired: !Condition IsLoggingEnabled
 
 Resources:
   FalconECSTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
+      PidMode: host
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+      RequiresCompatibilities:
+        - EC2
+      TaskRoleArn: !If
+        - IsTaskRoleRequired
+        - !Ref ECSTaskRoleArn
+        - !Ref AWS::NoValue
       ContainerDefinitions:
         - Name: cleanup-opt-crowdstrike
           MemoryReservation: 128
@@ -90,7 +78,7 @@ Resources:
           DependsOn:
             - ContainerName: cleanup-opt-crowdstrike
               Condition: COMPLETE
-          MemoryReservation: !Ref SensorMemoryReservation
+          MemoryReservation: 128
           Privileged: false
           ReadonlyRootFilesystem: true
           LogConfiguration: !If
@@ -101,19 +89,6 @@ Resources:
                 awslogs-region: !Ref AWS::Region
                 awslogs-stream-prefix: "node-sensor"
             - !Ref AWS::NoValue
-      PidMode: host
-      RuntimePlatform:
-        OperatingSystemFamily: LINUX
-      RequiresCompatibilities:
-        - EC2
-      ExecutionRoleArn: !If
-        - IsExecutionRoleRequired
-        - !Ref ECSExecutionRoleArn
-        - !Ref AWS::NoValue
-      TaskRoleArn: !If
-        - IsTaskRoleRequired
-        - !Ref ECSTaskRoleArn
-        - !Ref AWS::NoValue
 
   FalconECSService:
     Type: AWS::ECS::Service
@@ -121,7 +96,6 @@ Resources:
       Cluster: !Ref ECSClusterName
       SchedulingStrategy: DAEMON
       LaunchType: EC2
-      EnableExecuteCommand: !If [IsExecuteCommandEnabled, true, false]
       ServiceName: crowdstrike-falcon-cleanup-daemon
       TaskDefinition: !Ref FalconECSTaskDefinition
 

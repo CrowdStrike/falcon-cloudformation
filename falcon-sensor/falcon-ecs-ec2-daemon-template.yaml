@@ -10,10 +10,6 @@ Parameters:
   FalconImagePath:
     Type: String
     Description: The ECR image path including tag value for the Linux Falcon sensor container image
-  SensorMemoryReservation:
-    Type: Number
-    Description: Memory reservation for the Falcon sensor container
-    Default: 512
 
   APD:
     Type: String
@@ -88,6 +84,32 @@ Parameters:
     Description: Task role name to exec in to the Falcon container. Only required if logging or ECS exec is enabled.
     Default: ""
 
+  EnableResourceLimits:
+    Type: String
+    Description: >-
+      Boolean string to enable setting hard limits for Falcon sensor task CPU and memory resources. Resource limits should only be enabled
+      after analyzing and understanding the resource requirements for the Falcon sensor that is running in your ECS environment.
+    Default: false
+    AllowedValues:
+      - true
+      - false
+  SensorCpuReservation:
+    Type: Number
+    Description: CPU reservation for the Falcon sensor container
+    Default: 256
+  SensorCpuLimit:
+    Type: Number
+    Description: CPU hard limit for the Falcon sensor task. The cpu limit should be greater than or equal to the cpu reservation.
+    Default: 0
+  SensorMemoryReservation:
+    Type: Number
+    Description: Memory reservation for the Falcon sensor container
+    Default: 512
+  SensorMemoryLimit:
+    Type: Number
+    Description: Memory hard limit for the Falcon sensor task. The memory limit should be greater than the memory reservation.
+    Default: 0
+
 Metadata:
   AWS::CloudFormation::Interface:
     ParameterGroups:
@@ -116,6 +138,14 @@ Metadata:
           - EnableExecuteCommand
           - ECSExecutionRoleArn
           - ECSTaskRoleArn
+      - Label:
+          default: Advanced options for setting resource limits
+        Parameters:
+          - EnableResourceLimits
+          - SensorCpuReservation
+          - SensorCpuLimit
+          - SensorMemoryReservation
+          - SensorMemoryLimit
 
 Conditions:
   IsLoggingEnabled: !Equals [!Ref EnableLogging, "true"]
@@ -125,10 +155,45 @@ Conditions:
     - !Condition IsLoggingEnabled
     - !Condition IsExecuteCommandEnabled
 
+  IsResourceLimitsEnabled: !Equals [!Ref EnableResourceLimits, "true"]
+  SetCpuLimits: !Or
+    - !Condition IsResourceLimitsEnabled
+    - !Not [!Equals [!Ref SensorCpuLimit, 0]]
+  SetMemoryLimits: !Or
+    - !Condition IsResourceLimitsEnabled
+    - !Not [!Equals [ !Ref SensorMemoryLimit, 0]]
+
 Resources:
   FalconECSTaskDefinition:
     Type: AWS::ECS::TaskDefinition
     Properties:
+      Volumes:
+        - Name: falconstore
+          Host:
+            SourcePath: /opt/CrowdStrike/falconstore
+      NetworkMode: host
+      IpcMode: host
+      PidMode: host
+      RuntimePlatform:
+        OperatingSystemFamily: LINUX
+      RequiresCompatibilities:
+        - EC2
+      ExecutionRoleArn: !If
+        - IsExecutionRoleRequired
+        - !Ref ECSExecutionRoleArn
+        - !Ref AWS::NoValue
+      TaskRoleArn: !If
+        - IsTaskRoleRequired
+        - !Ref ECSTaskRoleArn
+        - !Ref AWS::NoValue
+      Cpu: !If
+        - SetCpuLimits
+        - !Ref SensorCpuLimit
+        - !Ref AWS::NoValue
+      Memory: !If
+        - SetMemoryLimits
+        - !Ref SensorMemoryLimit
+        - !Ref AWS::NoValue
       ContainerDefinitions:
         - Name: init-falconstore
           MemoryReservation: 128
@@ -177,6 +242,7 @@ Resources:
               Value: !Ref Billing
             - Name: FALCONCTL_OPT_BACKEND
               Value: !Ref Backend
+          Cpu: !Ref SensorCpuReservation
           MemoryReservation: !Ref SensorMemoryReservation
           MountPoints:
             - ContainerPath: /opt/CrowdStrike/falconstore
@@ -192,25 +258,6 @@ Resources:
                 awslogs-region: !Ref AWS::Region
                 awslogs-stream-prefix: "node-sensor"
             - !Ref AWS::NoValue
-      Volumes:
-        - Name: falconstore
-          Host:
-            SourcePath: /opt/CrowdStrike/falconstore
-      NetworkMode: host
-      IpcMode: host
-      PidMode: host
-      RuntimePlatform:
-        OperatingSystemFamily: LINUX
-      RequiresCompatibilities:
-        - EC2
-      ExecutionRoleArn: !If
-        - IsExecutionRoleRequired
-        - !Ref ECSExecutionRoleArn
-        - !Ref AWS::NoValue
-      TaskRoleArn: !If
-        - IsTaskRoleRequired
-        - !Ref ECSTaskRoleArn
-        - !Ref AWS::NoValue
 
   FalconECSService:
     Type: AWS::ECS::Service

@@ -53,7 +53,7 @@ Choose one of these deployment methods:
 ```bash
   aws cloudformation deploy \
     --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
-    --template-file falcon-ecs-ec2-daemon-template.yaml \
+    --template-file falcon-ecs-ec2-daemon.yaml \
     --parameter-overrides file://falcon-ecs-ec2-daemon-parameters.json
 ```
 
@@ -61,7 +61,7 @@ Choose one of these deployment methods:
 ```bash
   aws cloudformation deploy \
     --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
-    --template-file falcon-ecs-ec2-daemon-template.yaml \
+    --template-file falcon-ecs-ec2-daemon.yaml \
     --parameter-overrides \
       "ECSClusterName=$ECS_EC2_CLUSTER_NAME" \
       "FalconCID=$FALCON_CID" \
@@ -100,29 +100,29 @@ The output should match the number of EC2 instances in your cluster.
 
 
 #### Template Configuration Parameters
-| Parameter               | Required | Description                                                                                        | Default | Example/Options                                                                                  |
-|:------------------------|----------|:---------------------------------------------------------------------------------------------------|:--------|:-------------------------------------------------------------------------------------------------|
-| ECSClusterName          | Yes      | Your ECS cluster name                                                                              |         | your-ecs-cluster-name                                                                            |
-| FalconCID               | Yes      | Your CrowdStrike Customer ID                                                                       |         | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                                              |
-| FalconImagePath         | Yes      | Full path to Falcon sensor image in ECR                                                            |         | XXXXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:7.19.0-17219-1.falcon-linux.Release.US-1 |
-| APD                     | No       | App Proxy Disable (APD)                                                                            |         |                                                                                                  |
-| APH                     | No       | App Proxy Host (APH)                                                                               |         |                                                                                                  |
-| APP                     | No       | App Proxy Port (APP)                                                                               |         |                                                                                                  |
-| Trace                   | No       | Set Trace Level                                                                                    |         | Allowed values: none, err, warn, info, debug                                                     |
-| Feature                 | No       | Falcon sensor feature Options                                                                      |         |                                                                                                  |
-| Tags                    | No       | Comma separated list of tags for sensor grouping                                                   |         |                                                                                                  |
-| ProvisioningToken       | No       | Falcon provisioning token value                                                                    |         |                                                                                                  |
-| Billing                 | No       | Falcon billing value                                                                               |         | Allowed values: default, metered                                                                 |
-| Backend                 | No       | Falcon backend option                                                                              | bpf     | Allowed values: bpf, kernel                                                                      |
-| EnableLogging           | No       | Enable logging for the Falcon ECS service                                                          | false   | Allowed values: true, false                                                                      |
-| EnableExecuteCommand    | No       | Enable ECS exec on the Falcon sensor container. This should be enabled only when required.         | false   | Allowed values: true, false                                                                      |
-| ECSExecutionRoleArn     | No       | Your ECS execution role already defined in IAM. Required if logging is enabled.                    |         | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole                                              |
-| ECSTaskRoleArn          | No       | Your ECS task role already defined in IAM. Required if logging or execute-command is enabled.      |         | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole                                                   |
-| EnableResourceLimits    | No       | Boolean string to enable setting hard limits for Falcon sensor task CPU and memory resources       | false   | Allowed values: true, false                                                                      |
-| SensorCpuReservation    | No       | Cpu Reservation for Falcon sensor container                                                        | 256     |                                                                                                  |
-| SensorCpuLimit          | No       | CPU hard limit for Falcon sensor task. CPU limit must be greater than or equal to CPU reservation. |         |                                                                                                  |
-| SensorMemoryReservation | No       | Memory Reservation for Falcon sensor container                                                     | 512     |                                                                                                  |
-| SensorMemoryLimit       | No       | Memory hard limit for Falcon sensor task. Memory limit must be greater than memory reservation.    |         |                                                                                                  |
+| Parameter               | Required | Description                                                                                                                                              | Default | Example/Options                                                                                  |
+|:------------------------|----------|:---------------------------------------------------------------------------------------------------------------------------------------------------------|:--------|:-------------------------------------------------------------------------------------------------|
+| ECSClusterName          | Yes      | Your ECS cluster name                                                                                                                                    |         | your-ecs-cluster-name                                                                            |
+| FalconCID               | Yes      | Your CrowdStrike Customer ID                                                                                                                             |         | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                                              |
+| FalconImagePath         | Yes      | Full path to Falcon sensor image in ECR                                                                                                                  |         | XXXXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:7.19.0-17219-1.falcon-linux.Release.US-1 |
+| APD                     | No       | App Proxy Disable (APD)                                                                                                                                  |         |                                                                                                  |
+| APH                     | No       | App Proxy Host (APH)                                                                                                                                     |         |                                                                                                  |
+| APP                     | No       | App Proxy Port (APP)                                                                                                                                     |         |                                                                                                  |
+| Trace                   | No       | Set Trace Level                                                                                                                                          |         | Allowed values: none, err, warn, info, debug                                                     |
+| Feature                 | No       | Falcon sensor feature Options                                                                                                                            |         |                                                                                                  |
+| Tags                    | No       | Comma separated list of tags for sensor grouping                                                                                                         |         |                                                                                                  |
+| ProvisioningToken       | No       | Falcon provisioning token value                                                                                                                          |         |                                                                                                  |
+| Billing                 | No       | Falcon billing value                                                                                                                                     |         | Allowed values: default, metered                                                                 |
+| Backend                 | No       | Falcon backend option                                                                                                                                    | bpf     | Allowed values: bpf, kernel                                                                      |
+| EnableLogging           | No       | Enable logging for the Falcon ECS service                                                                                                                | false   | Allowed values: true, false                                                                      |
+| EnableExecuteCommand    | No       | Enable ECS exec on the Falcon sensor container. This should be enabled only when required.                                                               | false   | Allowed values: true, false                                                                      |
+| ECSExecutionRoleArn     | No       | Your ECS execution role already defined in IAM. Required if logging is enabled.                                                                          |         | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole                                              |
+| ECSTaskRoleArn          | No       | Your ECS task role already defined in IAM. Required if logging or execute-command is enabled.                                                            |         | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole                                                   |
+| EnableResourceLimits    | No       | Boolean string to enable setting hard limits for Falcon sensor task CPU and memory resources                                                             | false   | Allowed values: true, false                                                                      |
+| SensorCpuReservation    | No       | Cpu Reservation for Falcon sensor container. The default is only a placeholder. CPU usage should be measured and reservation adjusted accordingly.       | 256     |                                                                                                  |
+| SensorCpuLimit          | No       | CPU hard limit for Falcon sensor task. CPU limit must be greater than or equal to CPU reservation.                                                       |         |                                                                                                  |
+| SensorMemoryReservation | No       | Memory Reservation for Falcon sensor container. The default is only a placeholder. Memory usage should be measured and reservation adjusted accordingly. | 512     |                                                                                                  |
+| SensorMemoryLimit       | No       | Memory hard limit for Falcon sensor task. Memory limit must be greater than memory reservation.                                                          |         |                                                                                                  |
 
 ## Uninstall the sensor
 To remove the Falcon sensor daemon from your ECS cluster:
@@ -162,38 +162,37 @@ To remove the Falcon sensor daemon from your ECS cluster:
 Advanced configuration includes additional options outside the basic deployment setup.
 
 ### Enable logging
-By default, logging is disabled. To enable logging:
-- Set `EnableLogging=true`
+By default, logging is disabled.
+
+To enable logging for your Falcon sensor deployment, you need to set these parameters:
+- `EnableLogging=true`
 - `ECSTaskRoleArn` with `AmazonEC2ContainerServiceforEC2Role` IAM policy attached
 
 ### Enable ECS exec
 ECS exec should only be enabled if and when required.
-- Set `EnableExecuteCommand=true`
-- `ECSTaskRoleArn` with `AmazonECSTaskExecutionRolePolicy` IAM policy attached
-- `ECSExecutionRoleArn` with `AmazonECSTaskExecutionRolePolicy` IAM policy attached, plus the following SSM permissions:
-```json
-{
-    "Version": "2012-10-17",
-    "Statement": [
-        {
-            "Effect": "Allow",
-            "Action": [
-                "ssmmessages:CreateControlChannel",
-                "ssmmessages:CreateDataChannel",
-                "ssmmessages:OpenControlChannel",
-                "ssmmessages:OpenDataChannel"
-            ],
-            "Resource": "*"
-        }
-    ]
-}
-```
+
+To enable ECS exec for your Falcon sensor deployment, you need to set these parameters:
+1. `EnableExecuteCommand=true`
+2. `ECSTaskRoleArn` with `AmazonECSTaskExecutionRolePolicy` IAM policy attached
+3. `ECSExecutionRoleArn` with `AmazonECSTaskExecutionRolePolicy` IAM policy attached, plus the following SSM permissions:
+  - `ssmmessages:CreateControlChannel`
+  - `ssmmessages:CreateDataChannel`
+  - `ssmmessages:OpenControlChannel`
+  - `ssmmessages:OpenDataChannel`
 
 ### Enable resource limits
-Resource limits should only be enabled after analyzing and understanding the resource requirements for the Falcon sensor that
-is running in your ECS environment. If resource limits are set without understanding the resource requirements for your sensor deployment,
-you run the risk of throttling the sensor (CPU limit reached), or the sensor terminating unexpectedly (memory limit reached).
-If setting limits, do so at your own discretion.
-- Set `EnableResourceLimits=true`
+Resource limits are constraints that can be set on the amount of CPU and memory resources allocated to the sensor. They can help
+prevent the sensor from overutilizing resources so that it runs within a predictable and controlled environment to ensure that it
+does not consume excessive resources, which can impact other containers in the same environment.
+
+Setting resource limits without proper understanding of the sensor's resource requirements can lead to unintended consequences.
+If the limits are set too low, the sensor may not have enough resources to function properly. Set resource limits with caution,
+and be aware of these potential issues if resources are too low:
+
+- Sensor throttling: CPU limits may be reached, impacting sensor performance.
+- Unexpected termination: Memory limits may cause the sensor to terminate unexpectedly.
+
+To enable resource limits for your Falcon sensor deployment, you need to set these parameters:
+- `EnableResourceLimits=true`
 - `SensorCpuLimit` must be set to a number (CPU units) greater than or equal to `SensorCpuReservation`
 - `SensorMemoryLimit` must be set to a number (MiB) greater than `SensorMemoryReservation`

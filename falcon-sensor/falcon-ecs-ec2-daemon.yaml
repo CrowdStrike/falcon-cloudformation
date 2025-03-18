@@ -95,7 +95,7 @@ Parameters:
       - false
   SensorCpuReservation:
     Type: Number
-    Description: CPU reservation for the Falcon sensor container
+    Description: CPU reservation for the Falcon sensor container. The default is just a placeholder
     Default: 256
   SensorCpuLimit:
     Type: Number

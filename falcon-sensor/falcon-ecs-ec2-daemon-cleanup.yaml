@@ -1,12 +1,12 @@
 AWSTemplateFormatVersion: 2010-09-09
-Description: Sample template for launching Falcon Sensor for Linux container image as an ECS Daemon Service to a cluster
+Description: Sample template for uninstall and clean up of Linux Falcon sensor daemon service on your ECS cluster
 Parameters:
   ECSClusterName:
     Type: String
-    Description: Cluster name to deploy Falcon Sensor for Linux as a Daemon Service
+    Description: ECS cluster name where your Linux Falcon sensor daemon service has been deployed
   FalconImagePath:
     Type: String
-    Description: The ECR image path including tag value for the Falcon Sensor for Linux container image
+    Description: The ECR image path including tag value for the Linux Falcon sensor container image
 
   EnableLogging:
     Type: String

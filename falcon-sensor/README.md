@@ -166,7 +166,7 @@ By default, logging is disabled.
 
 To enable logging for your Falcon sensor deployment, you need to set these parameters:
 - `EnableLogging=true`
-- `ECSTaskRoleArn` with `AmazonEC2ContainerServiceforEC2Role` IAM policy attached
+- `ECSTaskRoleArn` with `AmazonECSTaskExecutionRolePolicy` IAM policy attached
 
 ### Enable ECS exec
 ECS exec should only be enabled if and when required.

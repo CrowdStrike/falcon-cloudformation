@@ -18,6 +18,80 @@ Verify you meet these requirements:
 - You have an existing ECS EC2 cluster or you have the ability to create one
 - For all Falcon sensor for Linux requirements, see [Falcon Sensor for Linux System Requirements](https://falcon.crowdstrike.com/documentation/page/edd7717e/falcon-sensor-for-linux-system-requirements)
 
+### Required IAM Permissions
+For most users, the standard ECS and CloudFormation permissions are sufficient. However, if you plan to use logging or
+execute-command features, the additional required permissions are shown in the table.
+
+<table>
+  <thead>
+    <tr>
+      <th style="text-align:left;">Role</th>
+      <th style="text-align:left;">Required Permissions</th>
+      <th style="text-align:left;">Notes</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td style="text-align:left;">Deployment User/Role</td>
+      <td style="text-align:left;">
+        cloudformation:CreateStack<br>
+        cloudformation:DeleteStack<br>
+        cloudformation:DescribeStacks<br>
+        cloudformation:UpdateStack<br>
+        cloudformation:ListStackResources<br>
+        cloudformation:DescribeStackResources<br>
+        cloudformation:CreateChangeSet<br>
+        cloudformation:ExecuteChangeSet<br>
+        cloudformation:DeleteChangeSet<br>
+        cloudformation:DescribeChangeSet<br>
+        <br>
+        ecs:DescribeClusters<br>
+        ecs:RegisterTaskDefinition<br>
+        ecs:DeregisterTaskDefinition<br>
+        ecs:CreateService<br>
+        ecs:UpdateService<br>
+        ecs:DeleteService<br>
+        ecs:DescribeServices<br>
+        <br>
+        iam:PassRole<br>
+        <br>
+        logs:CreateLogGroup<br>
+        logs:DeleteLogGroup
+      </td>
+      <td style="text-align:left;vertical-align:top">
+        Standard ECS CloudFormation deployment permissions<br>
+        <br>
+        Logs permissions are required when logging is enabled
+      </td>
+    </tr>
+    <tr>
+      <td style="text-align:left;">ECS Execution Role</td>
+      <td style="text-align:left;">
+        AWS managed policy: AmazonECSTaskExecutionRolePolicy<br>
+        (includes ECR and CloudWatch Logs permissions)<br>
+        <br>
+        ssmmessages:CreateControlChannel<br>
+        ssmmessages:CreateDataChannel<br>
+        ssmmessages:OpenControlChannel<br>
+        ssmmessages:OpenDataChannel
+      </td>
+      <td style="text-align:left;vertical-align:top">
+        Only required when ECS exec is enabled
+      </td>
+    </tr>
+    <tr>
+      <td style="text-align:left;">ECS Task Role</td>
+      <td style="text-align:left;">
+        AWS managed policy: AmazonECSTaskExecutionRolePolicy<br>
+        (includes ECR and CloudWatch Logs permissions)
+      </td>
+      <td style="text-align:left;">
+        Only required when logging or ECS exec is enabled
+      </td>
+    </tr>
+  </tbody>
+</table>
+
 ## CloudFormation template support for Falcon sensor versions
 | CloudFormation Template Version | Falcon Sensor Version |
 |:--------------------------------|:----------------------|
@@ -30,9 +104,6 @@ please follow the instructions in the Falcon support docs (Option 1: Pull an ima
 
 https://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment
 
-Important: Falcon sensor images are assessed for vulnerabilities and malware before they are released, and they are
-continuously monitored afterward.
-
 ## Deploy the sensor
 ### Step 1: Define your required parameters as shell variables
 | Variable               | Description                                    | Example                                                                                        |
@@ -41,15 +112,29 @@ continuously monitored afterward.
 | FALCON_CID             | Your CrowdStrike Customer ID                   | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                                            |
 | FALCON_FULL_IMAGE_PATH | Full path to Falcon sensor image in ECR        | XXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:7.19.0-17219-1.falcon-linux.Release.US-1 |
 
-### Step 2: Get the template
+### Step 2: Get the CloudFormation template
 ```bash
   git clone https://github.com/CrowdStrike/falcon-cloudformation.git
 ```
 
 ### Step 3: Deploy with CloudFormation
-Choose one of these deployment methods:
+First navigate to the cloned repository directory and locate the template and parameter file:
+```bash
+cd falcon-cloudformation/falcon-sensor
+```
 
+Then choose one of these deployment methods:
 #### Option A: Deploy using parameter file
+Edit the falcon-ecs-ec2-daemon-parameters.json file to replace the placeholder values with your actual configuration:
+```json
+[
+  "ECSClusterName=your-ecs-cluster-name",
+  "FalconCID=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX",
+  "FalconImagePath=XXXXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:7.19.0-17219-1.falcon-linux.Release.US-1"
+]
+```
+
+Deploy using the CloudFormation command:
 ```bash
   aws cloudformation deploy \
     --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
@@ -98,7 +183,6 @@ The output should match the number of EC2 instances in your cluster.
   - Go to Host Setup and management > Host management > Hosts.
   - Filter the host table to show your ECS cluster.
 
-
 #### Template Configuration Parameters
 | Parameter               | Required | Description                                                                                                                                              | Default | Example/Options                                                                                  |
 |:------------------------|----------|:---------------------------------------------------------------------------------------------------------------------------------------------------------|:--------|:-------------------------------------------------------------------------------------------------|
@@ -125,7 +209,7 @@ The output should match the number of EC2 instances in your cluster.
 | SensorMemoryLimit       | No       | Memory hard limit for Falcon sensor task. Memory limit must be greater than memory reservation.                                                          |         |                                                                                                  |
 
 ## Uninstall the sensor
-To remove the Falcon sensor daemon from your ECS cluster:
+To uninstall the Falcon sensor daemon from your ECS cluster:
 
 ### Step 1: Delete the Falcon sensor daemon stack 
 ```bash
@@ -159,26 +243,129 @@ To remove the Falcon sensor daemon from your ECS cluster:
 ```
 
 ## Advanced Configuration
-Advanced configuration includes additional options outside the basic deployment setup.
+Advanced configuration includes additional configuration options outside of the basic deployment setup. To enable any
+of the advanced configuration options, add the parameters to the parameters file and then redeploy the stack.
+
+1. Add the required parameters to the falcon-ecs-ec2-daemon-parameters.json file.
+2. Redeploy with CloudFormation stack with the updated parameter file:
+```bash
+  aws cloudformation deploy \
+    --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
+    --template-file falcon-ecs-ec2-daemon-template.yaml \
+    --parameter-overrides file://falcon-ecs-ec2-daemon-parameters.json
+```
+3. Alternative: Use `--parameter-overrides` to pass the parameters directly to the template.
+
+**Tip:** To see all the deployment steps, see [Deploy the sensor](#deploy-the-sensor).
 
 ### Enable logging
-By default, logging is disabled.
+Enable logging to get visibility into the Falcon sensor for Linux operations. By default, logging is disabled.
 
-To enable logging for your Falcon sensor deployment, you need to set these parameters:
-- `EnableLogging=true`
-- `ECSTaskRoleArn` with `AmazonECSTaskExecutionRolePolicy` IAM policy attached
+Enable logging with these parameters:
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>EnableLogging</td>
+      <td>Enable logging for the sensor container</td>
+      <td>true</td>
+    </tr>
+    <tr>
+      <td>ECSTaskRoleArn</td>
+      <td>ECS task role passed to the Falcon sensor ECS task definition</td>
+      <td>IAM ARN for a role with AmazonECSTaskExecutionRolePolicy attached</td>
+    </tr>
+  </tbody>
+</table>
+
+**Note:** When logging is enabled, additional IAM roles/permissions are needed. For info, see [Required IAM Permissions](#required-iam-permissions).
+
+#### Access the Logs
+After enabling logging, you can access the Falcon sensor logs through CloudWatch. The logs are stored in a log group
+created specifically for the sensor.
+
+To view the logs:
+
+1. Open the AWS CloudWatch console.
+2. Navigate to **Logs > Log groups**.
+3. Find the log group named `/aws/ecs/{your-cluster-name}/crowdstrike/falcon-daemon-service`.
+4. The logs are separated into streams:
+   1. Streams with prefix `falcon-node-init` contain logs from the initialization container
+   2. Streams with prefix `falcon-node-sensor` contain logs from the main sensor container
+
+Each EC2 instance in your cluster will have its own log streams, allowing you to monitor sensor activity across your entire environment.
 
 ### Enable ECS exec
-ECS exec should only be enabled if and when required.
+Execute commands in the Falcon sensor for Linux for troubleshooting. ECS exec should only be enabled if and when required.
 
-To enable ECS exec for your Falcon sensor deployment, you need to set these parameters:
-1. `EnableExecuteCommand=true`
-2. `ECSTaskRoleArn` with `AmazonECSTaskExecutionRolePolicy` IAM policy attached
-3. `ECSExecutionRoleArn` with `AmazonECSTaskExecutionRolePolicy` IAM policy attached, plus the following SSM permissions:
-  - `ssmmessages:CreateControlChannel`
-  - `ssmmessages:CreateDataChannel`
-  - `ssmmessages:OpenControlChannel`
-  - `ssmmessages:OpenDataChannel`
+Enable ECS exec with these parameters:
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>EnableExecuteCommand</td>
+      <td>Enable ECS exec</td>
+      <td>true</td>
+    </tr>
+    <tr>
+      <td>ECSTaskRoleArn</td>
+      <td>ECS task role for the Falcon sensor</td>
+      <td>IAM ARN for a role with AmazonECSTaskExecutionRolePolicy attached</td>
+    </tr>
+    <tr>
+      <td>ECSExecutionRoleArn</td>
+      <td>ECS execution role with required SSM permissions</td>
+      <td>
+        IAM ARN for a role with AmazonECSTaskExecutionRolePolicy attached<br>
+        <br>
+        SSM permissions required:<br>
+          - ssmmessages:CreateControlChannel<br>
+          - ssmmessages:CreateDataChannel<br>
+          - ssmmessages:OpenControlChannel<br>
+          - ssmmessages:OpenDataChannel
+      </td>
+    </tr>
+  </tbody>
+</table>
+
+#### Use ECS Exec for troubleshooting
+After enabling ECS exec, you can execute commands inside the Falcon sensor container using the AWS CLI:
+
+1. Find the running task ID for the Falcon sensor:
+```bash
+  aws ecs list-tasks \
+    --cluster your-cluster-name \
+    --service-name crowdstrike-falcon-node-daemon \
+    --query 'taskArns[0]' \
+    --output text
+```
+
+2. Execute commands in the sensor container:
+```bash
+  aws ecs execute-command \
+    --cluster your-cluster-name \
+    --task task-id-from-previous-step \
+    --container crowdstrike-falcon-node-sensor \
+    --command "/bin/bash" \
+    --interactive
+```
+This will open an interactive shell inside the Falcon sensor container, allowing you to run troubleshooting commands.
+
+**Warning:** Only enable ECS exec when needed for troubleshooting, and disable it when finished by setting
+`EnableExecuteCommand=false` and redeploying the stack. ECS exec gives direct access to the container environment.
+Restrict access to users who have appropriate permissions.
 
 ### Enable resource limits
 Resource limits are constraints that can be set on the amount of CPU and memory resources allocated to the sensor. They can help
@@ -192,7 +379,30 @@ and be aware of these potential issues if resources are too low:
 - Sensor throttling: CPU limits may be reached, impacting sensor performance.
 - Unexpected termination: Memory limits may cause the sensor to terminate unexpectedly.
 
-To enable resource limits for your Falcon sensor deployment, you need to set these parameters:
-- `EnableResourceLimits=true`
-- `SensorCpuLimit` must be set to a number (CPU units) greater than or equal to `SensorCpuReservation`
-- `SensorMemoryLimit` must be set to a number (MiB) greater than `SensorMemoryReservation`
+Enable resource limits with these parameters:
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Description</th>
+      <th>Value</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>EnableResourceLimits</td>
+      <td>Enables resource limits for the sensor</td>
+      <td>true</td>
+    </tr>
+    <tr>
+      <td>SensorCpuLimit</td>
+      <td>Maximum CPU resources (CPU units) for the sensor</td>
+      <td>≥ SensorCpuReservation</td>
+    </tr>
+    <tr>
+      <td>SensorMemoryLimit</td>
+      <td>Maximum memory resources (MiB) for the sensor</td>
+      <td>> SensorMemoryReservation</td>
+    </tr>
+  </tbody>
+</table>

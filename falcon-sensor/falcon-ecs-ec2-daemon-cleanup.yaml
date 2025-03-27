@@ -65,7 +65,7 @@ Resources:
               Options:
                 awslogs-group: !Sub "/aws/ecs/${ECSClusterName}/crowdstrike/falcon-daemon-service"
                 awslogs-region: !Ref AWS::Region
-                awslogs-stream-prefix: "node-init"
+                awslogs-stream-prefix: "falcon-node-init"
             - !Ref AWS::NoValue
         - Name: cleanup-sleep
           Image: !Ref FalconImagePath
@@ -87,7 +87,7 @@ Resources:
               Options:
                 awslogs-group: !Sub "/aws/ecs/${ECSClusterName}/crowdstrike/falcon-daemon-service"
                 awslogs-region: !Ref AWS::Region
-                awslogs-stream-prefix: "node-sensor"
+                awslogs-stream-prefix: "falcon-node-sensor"
             - !Ref AWS::NoValue
 
   FalconECSService:

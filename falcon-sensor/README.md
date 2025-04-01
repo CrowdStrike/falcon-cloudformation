@@ -15,7 +15,7 @@ Verify you meet these requirements:
 - AWS CLI is configured with the appropriate permissions
 - Git installed for accessing templates
 - You have access to the CrowdStrike Falcon container registry
-- You have an existing ECS EC2 cluster or you have the ability to create one
+- You have an existing ECS EC2 cluster, or you have the ability to create one
 - For all Falcon sensor for Linux requirements, see [Falcon Sensor for Linux System Requirements](https://falcon.crowdstrike.com/documentation/page/edd7717e/falcon-sensor-for-linux-system-requirements)
 
 ### Required IAM Permissions
@@ -25,15 +25,15 @@ execute-command features, the additional required permissions are shown in the t
 <table>
   <thead>
     <tr>
-      <th style="text-align:left;">Role</th>
-      <th style="text-align:left;">Required Permissions</th>
-      <th style="text-align:left;">Notes</th>
+      <th>Role</th>
+      <th>Required Permissions</th>
+      <th>Notes</th>
     </tr>
   </thead>
   <tbody>
     <tr>
-      <td style="text-align:left;">Deployment User/Role</td>
-      <td style="text-align:left;">
+      <td>Deployment User/Role</td>
+      <td>
         cloudformation:CreateStack<br>
         cloudformation:DeleteStack<br>
         cloudformation:DescribeStacks<br>
@@ -65,59 +65,158 @@ execute-command features, the additional required permissions are shown in the t
       </td>
     </tr>
     <tr>
-      <td style="text-align:left;">ECS Execution Role</td>
-      <td style="text-align:left;">
-        AWS managed policy: AmazonECSTaskExecutionRolePolicy<br>
-        (includes ECR and CloudWatch Logs permissions)<br>
+      <td>ECS Execution Role</td>
+      <td>
+        AmazonECSTaskExecutionRolePolicy<br>
         <br>
         ssmmessages:CreateControlChannel<br>
         ssmmessages:CreateDataChannel<br>
         ssmmessages:OpenControlChannel<br>
         ssmmessages:OpenDataChannel
       </td>
-      <td style="text-align:left;vertical-align:top">
-        Only required when ECS exec is enabled
-      </td>
+      <td style="text-align:left;vertical-align:top">Only required when ECS exec is enabled</td>
     </tr>
     <tr>
-      <td style="text-align:left;">ECS Task Role</td>
-      <td style="text-align:left;">
-        AWS managed policy: AmazonECSTaskExecutionRolePolicy<br>
-        (includes ECR and CloudWatch Logs permissions)
-      </td>
-      <td style="text-align:left;">
-        Only required when logging or ECS exec is enabled
-      </td>
+      <td>ECS Task Role</td>
+      <td>AmazonECSTaskExecutionRolePolicy</td>
+      <td>Only required when logging or ECS exec is enabled</td>
     </tr>
   </tbody>
 </table>
 
 ## CloudFormation template support for Falcon sensor versions
-| CloudFormation Template Version | Falcon Sensor Version |
-|:--------------------------------|:----------------------|
-| `>= 0.1.x`                      | `>= 7.19.x`           |
+<table>
+  <thead>
+    <tr>
+      <th>CloudFormation Template Version</th>
+      <th>Falcon Sensor Version</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>>= 0.1.x</td>
+      <td>>= 7.19.x</td>
+    </tr>
+  </tbody>
+</table>
 
-## Retrieve the sensor image
-You need access to the sensor image to deploy to your EC2 instances. This CFT assumes that you have a copy of the Falcon sensor image
-in your own ECR repository. For instructions on how to copy the image from the CrowdStrike registry and move it to your private registry,
-please follow the instructions in the Falcon support docs (Option 1: Pull an image and copy it to your private repo).
+## Deploy the Falcon sensor on ECS EC2 cluster
+To complete your Falcon sensor for Linux deployment on ECS EC2 clusters with AWS CloudFormation, you should complete these steps:
 
-https://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment
+- [Step 1: Get the Falcon sensor image](#step-1-get-the-falcon-sensor-image)
+- [Step 2: Define your deployment parameters](#step-2-define-your-deployment-parameters)
+- [Step 3: Get the CloudFormation template](#step-3-get-the-cloudformation-template)
+- [Step 4: Deploy with CloudFormation](#step-4-deploy-with-cloudformation)
+- [Step 5: Verify the deployment](#step-5-verify-the-deployment)
 
-## Deploy the sensor
-### Step 1: Define your required parameters as shell variables
-| Variable               | Description                                    | Example                                                                                        |
-|:-----------------------|:-----------------------------------------------|:-----------------------------------------------------------------------------------------------|
-| ECS_EC2_CLUSTER_NAME   | Your ECS cluster name                          | your-ecs-cluster-name                                                                          |
-| FALCON_CID             | Your CrowdStrike Customer ID                   | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                                            |
-| FALCON_FULL_IMAGE_PATH | Full path to Falcon sensor image in ECR        | XXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:7.19.0-17219-1.falcon-linux.Release.US-1 |
+### About the CloudFormation template
+The CloudFormation template deploys the Falcon sensor as an ECS daemon service, ensuring complete protection across your
+ECS EC2 cluster.
 
-### Step 2: Get the CloudFormation template
+<table>
+  <tr>
+    <th>Aspect</th>
+    <th>Details</th>
+  </tr>
+  <tr>
+    <td>Architecture</td>
+    <td>
+      <ul>
+        <li>Two-container design: an initialization container and a main sensor container</li>
+        <li>ECS daemon scheduling ensures 1 sensor per EC2 instance</li>
+        <li>Automatically protects new instances as they join the cluster</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>Resources</td>
+    <td>
+      <ul>
+        <li>Memory reservation: 512MiB default (configurable)</li>
+        <li>CPU reservation: 256 CPU units default (configurable)</li>
+        <li>Storage: Persistent volume at /opt/CrowdStrike</li>
+        <li>Platform: Requires Linux-based EC2 instances</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>Security</td>
+    <td>
+      <ul>
+        <li>Runs with elevated privileges (root user, privileged mode)</li>
+        <li>Uses host network, IPC, and PID modes for complete visibility</li>
+        <li>These permissions are required for proper security monitoring</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>Configuration</td>
+    <td>
+      <ul>
+        <li>Basic: CID, image path, cluster name, IAM roles</li>
+        <li>Advanced: Proxy settings, logging levels, tagging, backend selection</li>
+        <li>Logging: CloudWatch integration available but disabled by default</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>Management</td>
+    <td>
+      <ul>
+        <li>Service name: crowdstrike-falcon-node-daemon</li>
+        <li>Supports ECS Execute Command for troubleshooting</li>
+        <li>Persists across instance reboots and cluster scaling events</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+This template follows security best practices while ensuring the Falcon sensor has the access it needs to properly
+protect your workloads.
+
+### Step 1: Get the Falcon sensor image
+For production environments, we recommend that you copy the image to your private registry rather than pulling the image
+directly from the CrowdStrike registry.
+
+falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment
+
+### Step 2: Define your deployment parameters
+Define your deployment parameters by setting variables that you add to your CloudFormation template. Use the table to
+determine the right info.
+
+<table>
+  <thead>
+    <tr>
+      <th>Variable</th>
+      <th>Description</th>
+      <th>Example</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ECS_EC2_CLUSTER_NAME</td>
+      <td>Your ECS cluster name</td>
+      <td>your-ecs-cluster-name<br>something else</td>
+    </tr>
+    <tr>
+      <td>FALCON_CID</td>
+      <td>Your CrowdStrike Customer ID</td>
+      <td>XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX</td>
+    </tr>
+    <tr>
+      <td>FALCON_FULL_IMAGE_PATH</td>
+      <td>Full path to Falcon sensor image in ECR</td>
+      <td>XXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:7.19.0-17219-1.falcon-linux.Release.US-1</td>
+    </tr>
+  </tbody>
+</table>
+
+### Step 3: Get the CloudFormation template
 ```bash
   git clone https://github.com/CrowdStrike/falcon-cloudformation.git
 ```
 
-### Step 3: Deploy with CloudFormation
+### Step 4: Deploy with CloudFormation
 First navigate to the cloned repository directory and locate the template and parameter file:
 ```bash
 cd falcon-cloudformation/falcon-sensor
@@ -153,7 +252,7 @@ Deploy using the CloudFormation command:
       "FalconImagePath=$FALCON_FULL_IMAGE_PATH"
 ```
 
-### Step 4: Verify the deployment
+### Step 5: Verify the deployment
 When the deployment is complete, verify the Falcon sensor is running on all EC2 instances in your cluster.
 
 1. Check the CloudFormation deployment status
@@ -184,29 +283,165 @@ The output should match the number of EC2 instances in your cluster.
   - Filter the host table to show your ECS cluster.
 
 #### Template Configuration Parameters
-| Parameter               | Required | Description                                                                                                                                              | Default | Example/Options                                                                                  |
-|:------------------------|----------|:---------------------------------------------------------------------------------------------------------------------------------------------------------|:--------|:-------------------------------------------------------------------------------------------------|
-| ECSClusterName          | Yes      | Your ECS cluster name                                                                                                                                    |         | your-ecs-cluster-name                                                                            |
-| FalconCID               | Yes      | Your CrowdStrike Customer ID                                                                                                                             |         | XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX                                                              |
-| FalconImagePath         | Yes      | Full path to Falcon sensor image in ECR                                                                                                                  |         | XXXXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:7.19.0-17219-1.falcon-linux.Release.US-1 |
-| APD                     | No       | App Proxy Disable (APD)                                                                                                                                  |         |                                                                                                  |
-| APH                     | No       | App Proxy Host (APH)                                                                                                                                     |         |                                                                                                  |
-| APP                     | No       | App Proxy Port (APP)                                                                                                                                     |         |                                                                                                  |
-| Trace                   | No       | Set Trace Level                                                                                                                                          |         | Allowed values: none, err, warn, info, debug                                                     |
-| Feature                 | No       | Falcon sensor feature Options                                                                                                                            |         |                                                                                                  |
-| Tags                    | No       | Comma separated list of tags for sensor grouping                                                                                                         |         |                                                                                                  |
-| ProvisioningToken       | No       | Falcon provisioning token value                                                                                                                          |         |                                                                                                  |
-| Billing                 | No       | Falcon billing value                                                                                                                                     |         | Allowed values: default, metered                                                                 |
-| Backend                 | No       | Falcon backend option                                                                                                                                    | bpf     | Allowed values: bpf, kernel                                                                      |
-| EnableLogging           | No       | Enable logging for the Falcon ECS service                                                                                                                | false   | Allowed values: true, false                                                                      |
-| EnableExecuteCommand    | No       | Enable ECS exec on the Falcon sensor container. This should be enabled only when required.                                                               | false   | Allowed values: true, false                                                                      |
-| ECSExecutionRoleArn     | No       | Your ECS execution role already defined in IAM. Required if logging is enabled.                                                                          |         | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole                                              |
-| ECSTaskRoleArn          | No       | Your ECS task role already defined in IAM. Required if logging or execute-command is enabled.                                                            |         | arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole                                                   |
-| EnableResourceLimits    | No       | Boolean string to enable setting hard limits for Falcon sensor task CPU and memory resources                                                             | false   | Allowed values: true, false                                                                      |
-| SensorCpuReservation    | No       | Cpu Reservation for Falcon sensor container. The default is only a placeholder. CPU usage should be measured and reservation adjusted accordingly.       | 256     |                                                                                                  |
-| SensorCpuLimit          | No       | CPU hard limit for Falcon sensor task. CPU limit must be greater than or equal to CPU reservation.                                                       |         |                                                                                                  |
-| SensorMemoryReservation | No       | Memory Reservation for Falcon sensor container. The default is only a placeholder. Memory usage should be measured and reservation adjusted accordingly. | 512     |                                                                                                  |
-| SensorMemoryLimit       | No       | Memory hard limit for Falcon sensor task. Memory limit must be greater than memory reservation.                                                          |         |                                                                                                  |
+<table>
+  <thead>
+    <tr>
+      <th>Parameter</th>
+      <th>Required</th>
+      <th>Description</th>
+      <th>Example/Options</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>ECSClusterName</td>
+      <td>Yes</td>
+      <td>Your ECS cluster name</td>
+      <td>Example: your-ecs-cluster-name</td>
+    </tr>
+    <tr>
+      <td>FalconCID</td>
+      <td>Yes</td>
+      <td>Your CrowdStrike Customer ID</td>
+      <td>Example: XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX</td>
+    </tr>
+    <tr>
+      <td>FalconImagePath</td>
+      <td>Yes</td>
+      <td>Full path to Falcon sensor image in ECR</td>
+      <td>Example: XXXXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:7.19.0-17219-1.falcon-linux.Release.US-1</td>
+    </tr>
+    <tr>
+      <td>APD</td>
+      <td>No</td>
+      <td>App Proxy Disable (APD)</td>
+      <td>Options: true, false</td>
+    </tr>
+    <tr>
+      <td>APH</td>
+      <td>No</td>
+      <td>App Proxy Host (APH)</td>
+      <td>Example: proxy.example.com</td>
+    </tr>
+    <tr>
+      <td>APP</td>
+      <td>No</td>
+      <td>App Proxy Port (APP)</td>
+      <td>Example: 3128</td>
+    </tr>
+    <tr>
+      <td>Trace</td>
+      <td>No</td>
+      <td>Set Trace Level</td>
+      <td>
+        Default: none<br>
+        Options: err, warn, info, debug
+      </td>
+    </tr>
+    <tr>
+      <td>Feature</td>
+      <td>No</td>
+      <td>Falcon sensor feature Options</td>
+      <td>Example: feature1,feature2</td>
+    </tr>
+    <tr>
+      <td>Tags</td>
+      <td>No</td>
+      <td>Comma separated list of tags for sensor grouping</td>
+      <td>Example: tag1,tag2,tag3</td>
+    </tr>
+    <tr>
+      <td>ProvisioningToken</td>
+      <td>No</td>
+      <td>Falcon provisioning token value</td>
+      <td>Example: abc123def456</td>
+    </tr>
+    <tr>
+      <td>Billing</td>
+      <td>No</td>
+      <td>Falcon billing value</td>
+      <td>Options: default, metered</td>
+    </tr>
+    <tr>
+      <td>Backend</td>
+      <td>No</td>
+      <td>Falcon backend option</td>
+      <td>
+        Default: bpf<br>
+        Option: kernel
+      </td>
+    </tr>
+    <tr>
+      <td>EnableLogging</td>
+      <td>No</td>
+      <td>Enable logging for the Falcon ECS service</td>
+      <td>
+        Default: false<br>
+        Option: true
+      </td>
+    </tr>
+    <tr>
+      <td>EnableExecuteCommand</td>
+      <td>No</td>
+      <td>Enable ECS exec on the Falcon sensor container. This should be enabled only when required.</td>
+      <td>
+        Default: false<br>
+        Option: true
+      </td>
+    </tr>
+    <tr>
+      <td>ECSExecutionRoleArn</td>
+      <td>No</td>
+      <td>Your ECS execution role already defined in IAM. Required if logging is enabled.</td>
+      <td>Example: arn:aws:iam::XXXXXXXXXXXX:role/yourEcsExecutionRole</td>
+    </tr>
+    <tr>
+      <td>ECSTaskRoleArn</td>
+      <td>No</td>
+      <td>Your ECS task role already defined in IAM. Required if logging or execute-command is enabled.</td>
+      <td>Example: arn:aws:iam::XXXXXXXXXXXX:role/yourEcsTaskRole</td>
+    </tr>
+    <tr>
+      <td>EnableResourceLimits</td>
+      <td>No</td>
+      <td>Boolean string to enable setting hard limits for Falcon sensor task CPU and memory resources</td>
+      <td>
+        Default: false<br>
+        Option: true
+      </td>
+    </tr>
+    <tr>
+      <td>SensorCpuReservation</td>
+      <td>No</td>
+      <td>Cpu Reservation for Falcon sensor container. The default is only a placeholder. CPU usage should be measured and reservation adjusted accordingly.</td>
+      <td>Default: 256 (CPU units)</td>
+    </tr>
+    <tr>
+      <td>SensorCpuLimit</td>
+      <td>No</td>
+      <td>CPU hard limit for Falcon sensor task. CPU limit must be greater than or equal to CPU reservation.</td>
+      <td>
+        Default: 0<br>
+        Example: 512 (CPU units)
+      </td>
+    </tr>
+    <tr>
+      <td>SensorMemoryReservation</td>
+      <td>No</td>
+      <td>Memory Reservation for Falcon sensor container. The default is only a placeholder. Memory usage should be measured and reservation adjusted accordingly.</td>
+      <td></td>
+    </tr>
+    <tr>
+      <td>SensorMemoryLimit</td>
+      <td>No</td>
+      <td>Memory hard limit for Falcon sensor task. Memory limit must be greater than memory reservation.</td>
+      <td>
+        Default: 0<br>
+        Example: 1024 (MiB)
+      </td>
+    </tr>
+  </tbody>
+</table>
 
 ## Uninstall the sensor
 To uninstall the Falcon sensor daemon from your ECS cluster:

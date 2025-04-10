@@ -18,6 +18,14 @@ Verify you meet these requirements:
 - You have an existing ECS EC2 cluster, or you have the ability to create one
 - For all Falcon sensor for Linux requirements, see [Falcon Sensor for Linux System Requirements](https://falcon.crowdstrike.com/documentation/page/edd7717e/falcon-sensor-for-linux-system-requirements)
 
+### AWS CLI region
+Ensure your AWS CLI is configured to use the same region as your ECS cluster. CloudFormation stacks are region-specific,
+and your deployment will fail if the CLI is configured for a different region than your cluster. Verify the CLI region:
+
+- Check your current region: `aws configure get region`
+- Set your region: `aws configure set region <your-region>`
+- Alternatively, specify the region in each command: `aws cloudformation deploy --region <your-region> …`
+
 ### Required IAM Permissions
 For most users, the standard ECS and CloudFormation permissions are sufficient. However, if you plan to use logging or
 execute-command features, the additional required permissions are shown in the table.
@@ -175,10 +183,16 @@ This template follows security best practices while ensuring the Falcon sensor h
 protect your workloads.
 
 ### Step 1: Get the Falcon sensor image
-For production environments, we recommend that you copy the image to your private registry rather than pulling the image
-directly from the CrowdStrike registry.
+The AWS CloudFormation template requires that the Falcon sensor image is hosted in your Amazon ECR repo. Use the
+CrowdStrike supported image pull script to retrieve the image from the CrowdStrike registry, and then copy the image to
+your own ECR repo.
 
-falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment
+1. Retrieve the Falcon sensor image with the image pull script. For details on how to use the pull script, see [Retrieve the Falcon sensor image for your deployment](http://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment).
+2. You can copy the Falcon sensor image directly to your ECR repository with the pull script. For instructions, see [Option 1: Pull an image and copy it to your private repo](https://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment#bc84c9e1).
+3. The output from step 2 is two variables: `$FALCON_IMAGE_REPO` and `$FALCON_IMAGE_TAG`. These should be combined and set to `$FALCON_FULL_IMAGE_PATH`:
+```bash
+  export FALCON_FULL_IMAGE_PATH=$FALCON_IMAGE_REPO:$FALCON_IMAGE_TAG
+```
 
 ### Step 2: Define your deployment parameters
 Define your deployment parameters by setting variables that you add to your CloudFormation template. Use the table to
@@ -212,6 +226,7 @@ determine the right info.
 </table>
 
 ### Step 3: Get the CloudFormation template
+Clone this CrowdStrike repo with the following command:
 ```bash
   git clone https://github.com/CrowdStrike/falcon-cloudformation.git
 ```
@@ -219,11 +234,13 @@ determine the right info.
 ### Step 4: Deploy with CloudFormation
 First navigate to the cloned repository directory and locate the template and parameter file:
 ```bash
-cd falcon-cloudformation/falcon-sensor
+  cd falcon-cloudformation/falcon-sensor
 ```
 
 Then choose one of these deployment methods:
 #### Option A: Deploy using parameter file
+**Important:** Ensure your AWS CLI is set to the correct region. For info, see [AWS CLI region](#aws-cli-region).
+
 Edit the falcon-ecs-ec2-daemon-parameters.json file to replace the placeholder values with your actual configuration:
 ```json
 [
@@ -233,7 +250,7 @@ Edit the falcon-ecs-ec2-daemon-parameters.json file to replace the placeholder v
 ]
 ```
 
-Deploy using the CloudFormation command:
+Deploy the AWS CloudFormation stack using the AWS CLI:
 ```bash
   aws cloudformation deploy \
     --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
@@ -242,6 +259,9 @@ Deploy using the CloudFormation command:
 ```
 
 #### Option B: Deploy using command line parameters
+**Important:** Ensure your AWS CLI is set to the correct region. For info, see [AWS CLI region](#aws-cli-region).
+
+Deploy the AWS CloudFormation stack using the AWS CLI:
 ```bash
   aws cloudformation deploy \
     --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
@@ -404,7 +424,7 @@ The output should match the number of EC2 instances in your cluster.
     <tr>
       <td>EnableResourceLimits</td>
       <td>No</td>
-      <td>Boolean string to enable setting hard limits for Falcon sensor task CPU and memory resources</td>
+      <td>Enable CPU and memory hard limits for the sensor</td>
       <td>
         Default: false<br>
         Option: true
@@ -419,7 +439,7 @@ The output should match the number of EC2 instances in your cluster.
     <tr>
       <td>SensorCpuLimit</td>
       <td>No</td>
-      <td>CPU hard limit for Falcon sensor task. CPU limit must be greater than or equal to CPU reservation.</td>
+      <td>CPU hard limit for Falcon sensor task. CPU limit must be non-zero, and greater than or equal to CPU reservation.</td>
       <td>
         Default: 0<br>
         Example: 512 (CPU units)
@@ -429,12 +449,12 @@ The output should match the number of EC2 instances in your cluster.
       <td>SensorMemoryReservation</td>
       <td>No</td>
       <td>Memory Reservation for Falcon sensor container. The default is only a placeholder. Memory usage should be measured and reservation adjusted accordingly.</td>
-      <td></td>
+      <td>Default: 512 (MiB)</td>
     </tr>
     <tr>
       <td>SensorMemoryLimit</td>
       <td>No</td>
-      <td>Memory hard limit for Falcon sensor task. Memory limit must be greater than memory reservation.</td>
+      <td>Memory hard limit for Falcon sensor task. Memory limit must be non-zero, and greater than memory reservation.</td>
       <td>
         Default: 0<br>
         Example: 1024 (MiB)
@@ -443,17 +463,148 @@ The output should match the number of EC2 instances in your cluster.
   </tbody>
 </table>
 
-## Uninstall the sensor
-To uninstall the Falcon sensor daemon from your ECS cluster:
+## Upgrade the Falcon sensor
+To upgrade the Falcon sensor, follow the same procedure as the initial deployment. The only difference is that you'll
+need to get the new sensor version and update your deployment with the new image path.
 
-### Step 1: Delete the Falcon sensor daemon stack 
+To upgrade the Falcon sensor, you must complete these steps:
+
+- [Step 1: Get the new Falcon sensor image and update your ECR repository](#step-1-get-the-new-falcon-sensor-image-and-update-your-ecr-repository)
+- [Step 2: Deploy the updated stack](#step-2-deploy-the-updated-stack)
+- [Step 3: Verify that the upgrade completed successfully](#step-3-verify-that-the-upgrade-completed-successfully)
+
+### Step 1: Get the new Falcon sensor image and update your ECR repository
+The AWS CloudFormation template requires that the Falcon sensor image is hosted in your Amazon ECR repo. Use the
+CrowdStrike supported image pull script to retrieve the image from the CrowdStrike registry, and then copy the image to
+your own ECR repo.
+
+1. Retrieve the Falcon sensor image with the image pull script. For details on how to use the pull script, see [Retrieve the Falcon sensor image for your deployment](http://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment).
+2. You can copy the Falcon sensor image directly to your ECR repository with the pull script. For instructions, see [Option 1: Pull an image and copy it to your private repo](https://falcon.crowdstrike.com/documentation/page/eb6c645d/retrieve-the-falcon-sensor-image-for-your-deployment#bc84c9e1).
+3. The output from step 2 is two variables: `$FALCON_IMAGE_REPO` and `$FALCON_IMAGE_TAG`. These should be combined and set to `$FALCON_FULL_IMAGE_PATH`:
+```bash
+  export FALCON_FULL_IMAGE_PATH=$FALCON_IMAGE_REPO:$FALCON_IMAGE_TAG
+```
+
+### Step 2: Deploy the updated stack
+After you get the new Falcon sensor version, redeploy the stack using one of the 2 options:
+
+First navigate to the cloned repository directory and locate the template and parameter file:
+```bash
+  cd falcon-cloudformation/falcon-sensor
+```
+
+Then choose one of these deployment methods:
+#### Option A: Deploy using parameter file
+**Important:** Ensure your AWS CLI is set to the correct region. For info, see [AWS CLI region](#aws-cli-region).
+
+Edit the falcon-ecs-ec2-daemon-parameters.json file to replace the placeholder values with your actual configuration:
+```json
+[
+  "ECSClusterName=your-ecs-cluster-name",
+  "FalconCID=XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX-XX",
+  "FalconImagePath=XXXXXXXXXXXX.XXX.ecr.region.amazonaws.com/falcon-sensor:7.19.0-17219-1.falcon-linux.Release.US-1"
+]
+```
+
+Deploy the AWS CloudFormation stack using the AWS CLI:
+```bash
+  aws cloudformation deploy \
+    --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
+    --template-file falcon-ecs-ec2-daemon.yaml \
+    --parameter-overrides file://falcon-ecs-ec2-daemon-parameters.json
+```
+
+#### Option B: Deploy using command line parameters
+**Important:** Ensure your AWS CLI is set to the correct region. For info, see [AWS CLI region](#aws-cli-region).
+
+Deploy the AWS CloudFormation stack using the AWS CLI:
+```bash
+  aws cloudformation deploy \
+    --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME \
+    --template-file falcon-ecs-ec2-daemon.yaml \
+    --parameter-overrides \
+      "ECSClusterName=$ECS_EC2_CLUSTER_NAME" \
+      "FalconCID=$FALCON_CID" \
+      "FalconImagePath=$FALCON_FULL_IMAGE_PATH"
+```
+
+### Step 3: Verify that the upgrade completed successfully
+After you redeploy the stack with the new Falcon sensor, you can verify that the upgrade was successful and that the
+upgraded Falcon sensor is running on all EC2 instances in your cluster. Verifying an upgrade in the same way you verify
+the initial deployment. For details, see [Step 5: Verify the deployment](#step-5-verify-the-deployment).
+
+## Uninstall the sensor
+To uninstall the Falcon sensor, you must complete these steps:
+
+- [Step 1: Delete the Falcon sensor daemon stack](#step-1-delete-the-falcon-sensor-daemon-stack)
+- [Step 2: Clean up Falcon sensor artifacts](#step-2-cleanup-falcon-sensor-artifacts)
+- [Step 3: Delete the cleanup stack](#step-3-delete-cleanup-stack)
+
+### About the cleanup template
+The cleanup template uninstalls the Falcon sensor from all EC2 instances in your cluster. Here's what you need to know:
+
+<table>
+  <tr>
+    <th>Aspect</th>
+    <th>Details</th>
+  </tr>
+  <tr>
+    <td>Purpose</td>
+    <td>
+      <ul>
+        <li>Completely removes all Falcon sensor components from host systems</li>
+        <li>Prevents artifacts from remaining on the filesystem</li>
+        <li>Ensures clean state for potential future re-installations</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>Architecture</td>
+    <td>
+      <ul>
+        <li>Two-container design: an uninstallation container and a sleep container</li>
+        <li>Runs /opt/CrowdStrike/falcon-daemonset-init -u to uninstall</li>
+        <li>Sleep container waits 5 minutes to ensure complete cleanup</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>Deployment</td>
+    <td>
+      <ul>
+        <li>Uses ECS daemon scheduling to run on every instance</li>
+        <li>Creates a service named crowdstrike-falcon-cleanup-daemon</li>
+        <li>Requires the same IAM roles as the installation template</li>
+      </ul>
+    </td>
+  </tr>
+  <tr>
+    <td>Resources</td>
+    <td>
+      <ul>
+        <li>Minimal resource requirements (128MiB memory)</li>
+        <li>Temporary deployment that can be removed after completion</li>
+        <li>Uses the same Falcon sensor image as the installation</li>
+      </ul>
+    </td>
+  </tr>
+</table>
+
+This cleanup process is essential for removing the sensor artifacts from prior installation, and must be run before any
+re-installation attempts.
+
+### Step 1: Delete the Falcon sensor daemon stack
+Delete the sensor daemon stack from the cluster.
+
 ```bash
   aws cloudformation delete-stack \
     --stack-name falcon-ecs-ec2-daemon-$ECS_EC2_CLUSTER_NAME
 ```
 
-### Step 2: Cleanup Falcon sensor artifacts 
-#### Option 1: Deploy cleanup using command line parameters
+### Step 2: Cleanup Falcon sensor artifacts
+After the daemon stack is removed, clean up the artifacts. You have 2 options:
+
+#### Option A: Deploy cleanup using command line parameters
 ```bash
   aws cloudformation deploy \
     --stack-name falcon-ecs-ec2-daemon-cleanup-$ECS_EC2_CLUSTER_NAME \
@@ -463,7 +614,7 @@ To uninstall the Falcon sensor daemon from your ECS cluster:
       "FalconImagePath=$FALCON_FULL_IMAGE_PATH"
 ```
 
-#### Option 2: Deploy cleanup using parameter file
+#### Option B: Deploy cleanup using parameter file
 ```bash
   aws cloudformation deploy \
     --stack-name falcon-ecs-ec2-daemon-cleanup-$ECS_EC2_CLUSTER_NAME \
@@ -472,6 +623,8 @@ To uninstall the Falcon sensor daemon from your ECS cluster:
 ```
 
 ### Step 3: Delete cleanup stack
+Delete the cleanup stack from the cluster.
+
 ```bash
   aws cloudformation delete-stack \
     --stack-name falcon-ecs-ec2-daemon-cleanup-$ECS_EC2_CLUSTER_NAME
@@ -491,7 +644,7 @@ of the advanced configuration options, add the parameters to the parameters file
 ```
 3. Alternative: Use `--parameter-overrides` to pass the parameters directly to the template.
 
-**Tip:** To see all the deployment steps, see [Deploy the sensor](#deploy-the-sensor).
+**Tip:** To see all the deployment steps, see [Deploy on ECS EC2 cluster](#deploy-the-falcon-sensor-on-ecs-ec2-cluster).
 
 ### Enable logging
 Enable logging to get visibility into the Falcon sensor for Linux operations. By default, logging is disabled.

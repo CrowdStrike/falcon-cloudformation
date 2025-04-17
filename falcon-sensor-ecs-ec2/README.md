@@ -234,7 +234,7 @@ Clone this CrowdStrike repo with the following command:
 ### Step 4: Deploy with CloudFormation
 First navigate to the cloned repository directory and locate the template and parameter file:
 ```bash
-  cd falcon-cloudformation/falcon-sensor
+  cd falcon-cloudformation/falcon-sensor-ecs-ec2
 ```
 
 Then choose one of these deployment methods:
@@ -490,7 +490,7 @@ After you get the new Falcon sensor version, redeploy the stack using one of the
 
 First navigate to the cloned repository directory and locate the template and parameter file:
 ```bash
-  cd falcon-cloudformation/falcon-sensor
+  cd falcon-cloudformation/falcon-sensor-ecs-ec2
 ```
 
 Then choose one of these deployment methods:
